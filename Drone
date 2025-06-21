@@ -2,13 +2,13 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
-local Teams = game:GetService("Teams")
+
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
-
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
+-- Create drone part
 local drone = Instance.new("Part")
 drone.Anchored = true
 drone.CanCollide = false
@@ -16,14 +16,23 @@ drone.Size = Vector3.new(2.5, 0.3, 2.5)
 drone.Material = Enum.Material.SmoothPlastic
 drone.BrickColor = BrickColor.White()
 drone.Name = "FlashDrone"
-drone.Position = hrp.Position + Vector3.new(0, 8, -6)
 drone.Parent = workspace
 
-local light = Instance.new("PointLight", drone)
-light.Range = 200
-light.Brightness = 4
-light.Color = Color3.new(1, 1, 1)
+-- Directional flashlight (SpotLight)
+local spotlight = Instance.new("SpotLight", drone)
+spotlight.Angle = 55
+spotlight.Brightness = 1.2
+spotlight.Range = 60
+spotlight.Color = Color3.new(1, 1, 1)
+spotlight.Face = Enum.NormalId.Front
 
+-- Dim ambient light to softly light up close area
+local ambientLight = Instance.new("PointLight", drone)
+ambientLight.Brightness = 0.4
+ambientLight.Range = 30
+ambientLight.Color = Color3.new(1, 1, 1)
+
+-- GUI Setup
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "DroneGui"
 gui.ResetOnSpawn = false
@@ -31,91 +40,70 @@ gui.ResetOnSpawn = false
 local scanBtn = Instance.new("TextButton")
 scanBtn.Size = UDim2.new(0, 100, 0, 40)
 scanBtn.Position = UDim2.new(0, 30, 0, 200)
-scanBtn.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+scanBtn.BackgroundColor3 = Color3.new(0, 0, 0)
 scanBtn.TextColor3 = Color3.new(1, 1, 1)
 scanBtn.Text = "Scan"
-scanBtn.Font = Enum.Font.GothamBold
 scanBtn.Parent = gui
 scanBtn.Active = true
 scanBtn.Draggable = true
 scanBtn.AutoButtonColor = false
 scanBtn.ZIndex = 2
 
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 100, 0, 40)
-toggleBtn.Position = UDim2.new(0, 30, 0, 250)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-toggleBtn.TextColor3 = Color3.new(1, 1, 1)
-toggleBtn.Text = "Mode: Players"
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.Parent = gui
-toggleBtn.Draggable = true
-toggleBtn.ZIndex = 2
-
-local scanMode = "Players" -- or "NPCs"
-
-toggleBtn.MouseButton1Click:Connect(function()
-	if scanMode == "Players" then
-		scanMode = "NPCs"
-		toggleBtn.Text = "Mode: NPCs"
-	else
-		scanMode = "Players"
-		toggleBtn.Text = "Mode: Players"
-	end
+-- Drone follows camera
+RunService.RenderStepped:Connect(function()
+	local camCF = camera.CFrame
+	local offset = camCF.LookVector * -4 + Vector3.new(0, 3, 0)
+	drone.CFrame = CFrame.new(hrp.Position + offset, hrp.Position + camCF.LookVector * 10)
 end)
 
-local function getColor(model)
-	local teamColor = BrickColor.White()
-	if Players:GetPlayerFromCharacter(model) then
-		teamColor = Players:GetPlayerFromCharacter(model).TeamColor
-	elseif model:FindFirstChild("TeamColor") and model.TeamColor:IsA("BrickColorValue") then
-		teamColor = model.TeamColor.Value
-	end
-	return teamColor.Color
-end
+-- Pulse circle effect
+local function createPulseCircle(target)
+	local pulse = Instance.new("Part")
+	pulse.Size = Vector3.new(1, 1, 1)
+	pulse.Transparency = 1
+	pulse.Anchored = true
+	pulse.CanCollide = false
+	pulse.CFrame = target:GetPivot()
+	pulse.Parent = workspace
 
-local function createPulseCircle(model)
-	local hrp = model:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "PulseCircle"
-	billboard.Adornee = hrp
+	local billboard = Instance.new("BillboardGui", pulse)
 	billboard.Size = UDim2.new(6, 0, 6, 0)
-	billboard.StudsOffset = Vector3.new(0, 0, 0)
 	billboard.AlwaysOnTop = true
-	billboard.LightInfluence = 0
-	billboard.MaxDistance = 1000
-	billboard.Parent = model
+	billboard.Adornee = pulse
 
-	local image = Instance.new("ImageLabel")
-	image.AnchorPoint = Vector2.new(0.5, 0.5)
-	image.Position = UDim2.new(0.5, 0, 0.5, 0)
-	image.Size = UDim2.new(1, 0, 1, 0)
-	image.BackgroundTransparency = 1
-	image.Image = "rbxassetid://92229924136385"
-	image.ImageColor3 = getColor(model)
-	image.ImageTransparency = 0.2
-	image.Parent = billboard
+	local circle = Instance.new("ImageLabel", billboard)
+	circle.Size = UDim2.new(1, 0, 1, 0)
+	circle.BackgroundTransparency = 1
+	circle.Image = "rbxassetid://92229924136385"
+	circle.ImageColor3 = Color3.new(1, 1, 1)
+	circle.ImageTransparency = 0.2
 
-	local tween = TweenService:Create(
-		image,
-		TweenInfo.new(1.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
-		{ Size = UDim2.new(3, 0, 3, 0), ImageTransparency = 1 }
-	)
-
+	local tween = TweenService:Create(circle, TweenInfo.new(1.5), {
+		Size = UDim2.new(3, 0, 3, 0),
+		ImageTransparency = 1
+	})
 	tween:Play()
 	tween.Completed:Connect(function()
-		billboard:Destroy()
+		pulse:Destroy()
 	end)
 end
 
+-- Exclamation mark effect
 local function createExclamationAbove(char)
 	local head = char:FindFirstChild("Head")
 	if not head then return end
 
 	local distance = (camera.CFrame.Position - head.Position).Magnitude
 	local scale = math.clamp(100 / distance, 0.7, 2.5)
+
+	local color
+	if distance <= 100 then
+		color = Color3.fromRGB(255, 0, 0)
+	elseif distance <= 300 then
+		color = Color3.fromRGB(255, 255, 255)
+	else
+		color = Color3.fromRGB(0, 255, 0)
+	end
 
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.new(0, 40 * scale, 0, 40 * scale)
@@ -128,47 +116,68 @@ local function createExclamationAbove(char)
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.BackgroundTransparency = 1
 	label.Text = "!"
-	label.TextColor3 = getColor(char)
+	label.TextColor3 = color
 	label.TextScaled = true
 	label.Font = Enum.Font.Arcade
 	label.TextStrokeTransparency = 0.5
 
-	local tween = TweenService:Create(label, TweenInfo.new(1.5), { TextTransparency = 1, TextStrokeTransparency = 1 })
+	local tween = TweenService:Create(label, TweenInfo.new(1.5), {
+		TextTransparency = 1,
+		TextStrokeTransparency = 1
+	})
 	tween:Play()
 	tween.Completed:Connect(function()
 		gui:Destroy()
 	end)
 end
 
+-- Highlight effect
+local function highlightTarget(model, color)
+	local existing = model:FindFirstChild("ScanHighlight")
+	if existing then
+		existing:Destroy()
+	end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ScanHighlight"
+	highlight.Adornee = model
+	highlight.FillTransparency = 1
+	highlight.OutlineColor = color
+	highlight.OutlineTransparency = 0.1
+	highlight.Parent = model
+
+	task.delay(2.5, function()
+		if highlight and highlight.Parent then
+			highlight:Destroy()
+		end
+	end)
+end
+
+-- Scan logic
 local function scanPulse()
-	for _, model in pairs(workspace:GetDescendants()) do
+	for _, model in ipairs(workspace:GetDescendants()) do
 		if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") then
-			if model ~= character then
-				local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
-				if scanMode == "Players" and isPlayer or scanMode == "NPCs" and not isPlayer then
-					local distance = (hrp.Position - model.HumanoidRootPart.Position).Magnitude
-					if distance <= 500 then
-						createPulseCircle(model)
-						createExclamationAbove(model)
-					end
+			local dist = (hrp.Position - model.HumanoidRootPart.Position).Magnitude
+			if dist <= 500 then
+				createPulseCircle(model)
+				createExclamationAbove(model)
+
+				local color
+				if dist <= 100 then
+					color = Color3.fromRGB(255, 0, 0)
+				elseif dist <= 300 then
+					color = Color3.fromRGB(255, 255, 255)
+				else
+					color = Color3.fromRGB(0, 255, 0)
 				end
+
+				highlightTarget(model, color)
 			end
 		end
 	end
 end
 
-scanBtn.MouseButton1Click:Connect(scanPulse)
-
-RunService.RenderStepped:Connect(function()
-	if character and hrp then
-		local camDir = camera.CFrame.LookVector
-		local followPos = hrp.Position - camDir * 6 + Vector3.new(0, 8, 0)
-		local lookAt = CFrame.new(followPos, camera.CFrame.Position)
-		drone.CFrame = CFrame.new(followPos) * CFrame.Angles(0, lookAt.LookVector:Angle(Vector3.new(0, 0, -1)), 0)
-	end
-end)
-
-player.CharacterAdded:Connect(function(char)
-	character = char
-	hrp = char:WaitForChild("HumanoidRootPart")
+-- Button click
+scanBtn.MouseButton1Click:Connect(function()
+	scanPulse()
 end)
