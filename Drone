@@ -65,24 +65,31 @@ toggleBtn.Active = true
 toggleBtn.Draggable = true
 toggleBtn.ZIndex = 2
 
-local scanMode = "Players"
+local scanMode = "Players" -- or "NPCs" or "Items"
 local spinning = false
 
 -- Toggle Mode Button
 toggleBtn.MouseButton1Click:Connect(function()
-	scanMode = (scanMode == "Players") and "NPCs" or "Players"
+	if scanMode == "Players" then
+		scanMode = "NPCs"
+	elseif scanMode == "NPCs" then
+		scanMode = "Items"
+	else
+		scanMode = "Players"
+	end
 	toggleBtn.Text = "Mode: " .. scanMode
 end)
 
 -- Color Based on Distance
 local function getDistanceColor(distance)
-	if distance <= 100 then
-		return Color3.fromRGB(255, 0, 0)
-	elseif distance <= 300 then
-		return Color3.fromRGB(255, 255, 255)
+	if distance <= 250 then
+		return Color3.fromRGB(255, 0, 0) -- Red for close
+	elseif distance <= 700 then
+		return Color3.fromRGB(255, 255, 255) -- White for medium
 	else
-		return Color3.fromRGB(0, 255, 0)
+		return Color3.fromRGB(0, 255, 0) -- Green for far
 	end
+end
 end
 
 -- Pulse Ring Effect
@@ -129,7 +136,7 @@ local function createExclamationAbove(char)
 	if not head or not root then return end
 
 	local distance = (camera.CFrame.Position - head.Position).Magnitude
-	local scale = math.clamp(100 / distance, 0.7, 2.5)
+	local scale = math.clamp(1500 / distance, 0.7, 2.5)
 	local color = getDistanceColor(distance)
 
 	local gui = Instance.new("BillboardGui")
@@ -171,10 +178,18 @@ local function scanPulse()
 				local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
 				if (scanMode == "Players" and isPlayer) or (scanMode == "NPCs" and not isPlayer) then
 					local distance = (hrp.Position - model.HumanoidRootPart.Position).Magnitude
-					if distance <= 500 then
+					if distance <= 1500 then
 						createPulseCircle(model)
 						createExclamationAbove(model)
 					end
+				elseif scanMode == "Items" and model:FindFirstChild("IsItem") then
+					local itemPos = model:IsA("Model") and model:GetModelCFrame().Position or model.Position
+					local distance = (hrp.Position - itemPos).Magnitude
+					if distance <= 1500 then
+						createPulseCircle(model)
+						createExclamationAbove(model)
+					end
+				end
 				end
 			end
 		end
@@ -182,14 +197,16 @@ local function scanPulse()
 
 	if not spinning then
 		spinning = true
-		for i = 1, 3 do
-			local spin = TweenService:Create(drone, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
-				CFrame = drone.CFrame * CFrame.Angles(0, math.rad(120), 0)
-			})
-			spin:Play()
-			spin.Completed:Wait()
-		end
-		spinning = false
+		spawn(function()
+			for i = 1, 3 do
+				local spin = TweenService:Create(drone, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
+					CFrame = drone.CFrame * CFrame.Angles(0, math.rad(120), 0)
+				})
+				spin:Play()
+				spin.Completed:Wait()
+			end
+			spinning = false
+		end)
 	end
 end
 
