@@ -61,6 +61,7 @@ toggleBtn.TextColor3 = Color3.new(1, 1, 1)
 toggleBtn.Text = "Mode: Players"
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.Parent = gui
+toggleBtn.Active = true
 toggleBtn.Draggable = true
 toggleBtn.ZIndex = 2
 
@@ -89,32 +90,35 @@ local function createPulseCircle(model)
 	local hrp = model:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = hrp
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "PulseCircle"
+	billboard.Adornee = hrp
+	billboard.Size = UDim2.new(6, 0, 6, 0)
+	billboard.StudsOffset = Vector3.new(0, 0, 0)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 1000
+	billboard.Parent = model
 
-	local ring = Instance.new("ParticleEmitter")
-	ring.Texture = "rbxassetid://92229924136385"
-	ring.LightInfluence = 0
-	ring.ZOffset = 1
-	ring.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(1, 8)
-	})
-	ring.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(1, 1)
-	})
-	ring.Lifetime = NumberRange.new(1.25)
-	ring.Rate = 1
-	ring.Speed = NumberRange.new(0)
-	ring.Rotation = NumberRange.new(0)
-	ring.RotSpeed = NumberRange.new(0)
-	ring.Color = ColorSequence.new(getDistanceColor((hrp.Position - character.HumanoidRootPart.Position).Magnitude))
-	ring.Enabled = true
-	ring.Parent = attachment
+	local image = Instance.new("ImageLabel")
+	image.AnchorPoint = Vector2.new(0.5, 0.5)
+	image.Position = UDim2.new(0.5, 0, 0.5, 0)
+	image.Size = UDim2.new(1, 0, 1, 0)
+	image.BackgroundTransparency = 1
+	image.Image = "rbxassetid://92229924136385"
+	image.ImageColor3 = getDistanceColor((hrp.Position - character.HumanoidRootPart.Position).Magnitude)
+	image.ImageTransparency = 0.2
+	image.Rotation = 0
+	image.Parent = billboard
 
-	delay(1.25, function()
-		attachment:Destroy()
+	local tween = TweenService:Create(image, TweenInfo.new(1.25), {
+		Size = UDim2.new(3, 0, 3, 0),
+		ImageTransparency = 1,
+		Rotation = 360
+	})
+	tween:Play()
+	tween.Completed:Connect(function()
+		billboard:Destroy()
 	end)
 end
 
@@ -128,7 +132,6 @@ local function createExclamationAbove(char)
 	local scale = math.clamp(100 / distance, 0.7, 2.5)
 	local color = getDistanceColor(distance)
 
-	-- BillboardGui (!)
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.new(0, 40 * scale, 0, 40 * scale)
 	gui.StudsOffset = Vector3.new(0, 3, 0)
@@ -145,7 +148,6 @@ local function createExclamationAbove(char)
 	label.Font = Enum.Font.Arcade
 	label.TextStrokeTransparency = 0.5
 
-	-- Highlight
 	local highlight = Instance.new("Highlight")
 	highlight.FillColor = color
 	highlight.OutlineTransparency = 1
