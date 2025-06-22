@@ -61,13 +61,14 @@ toggleBtn.TextColor3 = Color3.new(1, 1, 1)
 toggleBtn.Text = "Mode: Players"
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.Parent = gui
+toggleBtn.Active = true
 toggleBtn.Draggable = true
 toggleBtn.ZIndex = 2
 
-local scanMode = "Players"
+local scanMode = "Players" -- or "NPCs" or "Items"
 local spinning = false
 
--- Toggle Mode
+-- Toggle Mode Button
 toggleBtn.MouseButton1Click:Connect(function()
 	if scanMode == "Players" then
 		scanMode = "NPCs"
@@ -79,52 +80,63 @@ toggleBtn.MouseButton1Click:Connect(function()
 	toggleBtn.Text = "Mode: " .. scanMode
 end)
 
--- Color by Distance
+-- Color Based on Distance
 local function getDistanceColor(distance)
-	if distance <= 100 then
-		return Color3.fromRGB(255, 0, 0)
-	elseif distance <= 300 then
-		return Color3.fromRGB(255, 255, 255)
+	if distance <= 250 then
+		return Color3.fromRGB(255, 0, 0) -- Red for close
+	elseif distance <= 700 then
+		return Color3.fromRGB(255, 255, 255) -- White for medium
 	else
-		return Color3.fromRGB(0, 255, 0)
+		return Color3.fromRGB(0, 255, 0) -- Green for far
 	end
 end
+end
 
--- Pulse Circle Effect
+-- Pulse Ring Effect
 local function createPulseCircle(model)
 	local hrp = model:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = hrp
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "PulseCircle"
+	billboard.Adornee = hrp
+	billboard.Size = UDim2.new(6, 0, 6, 0)
+	billboard.StudsOffset = Vector3.new(0, 0, 0)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.MaxDistance = 1000
+	billboard.Parent = model
 
-	local ring = Instance.new("ParticleEmitter")
-	ring.Texture = "rbxassetid://92229924136385"
-	ring.LightInfluence = 0
-	ring.ZOffset = 1
-	ring.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 8) })
-	ring.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
-	ring.Lifetime = NumberRange.new(1.25)
-	ring.Rate = 1
-	ring.Speed = NumberRange.new(0)
-	ring.Rotation = NumberRange.new(0)
-	ring.RotSpeed = NumberRange.new(0)
-	ring.Color = ColorSequence.new(getDistanceColor((hrp.Position - character.HumanoidRootPart.Position).Magnitude))
-	ring.Enabled = true
-	ring.Parent = attachment
+	local image = Instance.new("ImageLabel")
+	image.AnchorPoint = Vector2.new(0.5, 0.5)
+	image.Position = UDim2.new(0.5, 0, 0.5, 0)
+	image.Size = UDim2.new(1, 0, 1, 0)
+	image.BackgroundTransparency = 1
+	image.Image = "rbxassetid://92229924136385"
+	image.ImageColor3 = getDistanceColor((hrp.Position - character.HumanoidRootPart.Position).Magnitude)
+	image.ImageTransparency = 0.2
+	image.Rotation = 0
+	image.Parent = billboard
 
-	delay(1.25, function()
-		attachment:Destroy()
+	local tween = TweenService:Create(image, TweenInfo.new(1.25), {
+		Size = UDim2.new(3, 0, 3, 0),
+		ImageTransparency = 1,
+		Rotation = 360
+	})
+	tween:Play()
+	tween.Completed:Connect(function()
+		billboard:Destroy()
 	end)
 end
 
--- Exclamation Mark
+-- Exclamation Mark and Highlight
 local function createExclamationAbove(char)
 	local head = char:FindFirstChild("Head")
-	if not head then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not head or not root then return end
 
 	local distance = (camera.CFrame.Position - head.Position).Magnitude
-	local scale = math.clamp(100 / distance, 0.7, 2.5)
+	local scale = math.clamp(1500 / distance, 0.7, 2.5)
 	local color = getDistanceColor(distance)
 
 	local gui = Instance.new("BillboardGui")
@@ -143,22 +155,27 @@ local function createExclamationAbove(char)
 	label.Font = Enum.Font.Arcade
 	label.TextStrokeTransparency = 0.5
 
-	local tween = TweenService:Create(label, TweenInfo.new(1.5), {
-		TextTransparency = 1,
-		TextStrokeTransparency = 1
-	})
+	local highlight = Instance.new("Highlight")
+	highlight.FillColor = color
+	highlight.OutlineTransparency = 1
+	highlight.Adornee = char
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = char
+
+	local tween = TweenService:Create(label, TweenInfo.new(1.5), { TextTransparency = 1, TextStrokeTransparency = 1 })
 	tween:Play()
 	tween.Completed:Connect(function()
 		gui:Destroy()
+		highlight:Destroy()
 	end)
 end
 
--- SCAN with expanding sphere
+-- Pulse Scan Logic
 local function scanPulse()
 	if not spinning then
 		spinning = true
-		task.spawn(function()
-			for _ = 1, 3 do
+		spawn(function()
+			for i = 1, 3 do
 				local spin = TweenService:Create(drone, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
 					CFrame = drone.CFrame * CFrame.Angles(0, math.rad(120), 0)
 				})
@@ -169,29 +186,34 @@ local function scanPulse()
 		end)
 	end
 
-	local pulseSphere = Instance.new("Part")
-	pulseSphere.Shape = Enum.PartType.Ball
-	pulseSphere.Anchored = true
-	pulseSphere.CanCollide = false
-	pulseSphere.Transparency = 0.7
-	pulseSphere.Color = Color3.fromRGB(255, 0, 0)
-	pulseSphere.Material = Enum.Material.ForceField
-	pulseSphere.Size = Vector3.new(1, 1, 1)
-	pulseSphere.CFrame = CFrame.new(drone.Position)
-	pulseSphere.Parent = workspace
+	-- Create a visible 2D pulse ring using BillboardGui
+	local pulseRing = Instance.new("BillboardGui")
+	pulseRing.Size = UDim2.new(0, 0, 0, 0)
+	pulseRing.StudsOffset = Vector3.new(0, 0.1, 0)
+	pulseRing.Adornee = drone
+	pulseRing.AlwaysOnTop = true
+	pulseRing.LightInfluence = 0
+	pulseRing.Parent = drone
+
+	local ringImage = Instance.new("ImageLabel")
+	ringImage.AnchorPoint = Vector2.new(0.5, 0.5)
+	ringImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+	ringImage.Size = UDim2.new(0, 1, 0, 1)
+	ringImage.BackgroundTransparency = 1
+	ringImage.Image = "rbxassetid://92229924136385"
+	ringImage.ImageTransparency = 0.25
+	ringImage.ZIndex = 1
+	ringImage.Parent = pulseRing
 
 	local scanned = {}
-	local radius = 0
+	local startTime = tick()
 
-	local tween = TweenService:Create(pulseSphere, TweenInfo.new(1.25), {
-		Size = Vector3.new(3000, 3000, 3000),
-		Transparency = 1
-	})
-	tween:Play()
+	RunService.RenderStepped:Connect(function()
+		local elapsed = tick() - startTime
+		local radius = math.min(elapsed * 800, 1500)
+		ringImage.Size = UDim2.new(0, radius * 2, 0, radius * 2)
+		ringImage.ImageTransparency = elapsed > 1.25 and 1 or (1 - (elapsed / 1.25))
 
-	local connection
-	connection = RunService.Heartbeat:Connect(function()
-		radius += 120
 		for _, model in pairs(workspace:GetDescendants()) do
 			if not scanned[model] and model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") and model ~= character then
 				local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
@@ -205,18 +227,56 @@ local function scanPulse()
 					end
 				end
 			end
-		end
+	end)
+
 		if radius >= 1500 then
-			connection:Disconnect()
-			pulseSphere:Destroy()
+			pulseRing:Destroy()
+			return
 		end
 	end)
 end
+endants()) do
+		if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") then
+			if model ~= character then
+				local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
+				if (scanMode == "Players" and isPlayer) or (scanMode == "NPCs" and not isPlayer) then
+					local distance = (hrp.Position - model.HumanoidRootPart.Position).Magnitude
+					if distance <= 1500 then
+						createPulseCircle(model)
+						createExclamationAbove(model)
+					end
+				elseif scanMode == "Items" and model:FindFirstChild("IsItem") then
+					local itemPos = model:IsA("Model") and model:GetModelCFrame().Position or model.Position
+					local distance = (hrp.Position - itemPos).Magnitude
+					if distance <= 1500 then
+						createPulseCircle(model)
+						createExclamationAbove(model)
+					end
+				end
+				end
+			end
+		end
+	end
 
--- Click triggers
+	if not spinning then
+		spinning = true
+		spawn(function()
+			for i = 1, 3 do
+				local spin = TweenService:Create(drone, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
+					CFrame = drone.CFrame * CFrame.Angles(0, math.rad(120), 0)
+				})
+				spin:Play()
+				spin.Completed:Wait()
+			end
+			spinning = false
+		end)
+	end
+end
+
+-- Button Click
 scanBtn.MouseButton1Click:Connect(scanPulse)
 
--- Floating follow and facing logic
+-- Floating + Facing Logic
 local up = true
 local offset = 0
 
@@ -231,7 +291,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- Character reset support
+-- Respawn Tracking
 player.CharacterAdded:Connect(function(char)
 	character = char
 	hrp = char:WaitForChild("HumanoidRootPart")
