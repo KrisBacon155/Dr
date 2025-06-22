@@ -1,5 +1,0 @@
-ReplicatedStorage
-└── DroneModules
-    ├── DroneConfig (ModuleScript)
-    ├── DroneEffects (ModuleScript)
-    └── DroneScanner (ModuleScript)
