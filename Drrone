@@ -1,163 +1,98 @@
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
+-- Services local Players = game:GetService("Players") local RunService = game:GetService("RunService") local TweenService = game:GetService("TweenService") local player = Players.LocalPlayer local camera = workspace.CurrentCamera
 
--- Character setup
-local character = player.Character or player.CharacterAdded:Wait()
-local hrp = character:WaitForChild("HumanoidRootPart")
+-- Character setup local character = player.Character or player.CharacterAdded:Wait() local hrp = character:WaitForChild("HumanoidRootPart")
 
--- Drone part
-local drone = Instance.new("Part")
-drone.Name = "AliveDrone"
-drone.Size = Vector3.new(2, 0.5, 2)
-drone.Anchored = true
-drone.CanCollide = false
-drone.Material = Enum.Material.SmoothPlastic
-drone.BrickColor = BrickColor.White()
-drone.Position = hrp.Position + Vector3.new(0, 6, -4)
-drone.Parent = workspace
+-- Drone part local drone = Instance.new("Part") drone.Name = "AliveDrone" drone.Size = Vector3.new(2, 0.5, 2) drone.Anchored = true drone.CanCollide = false drone.Material = Enum.Material.SmoothPlastic drone.BrickColor = BrickColor.White() drone.Position = hrp.Position + Vector3.new(0, 6, -4) drone.Parent = workspace
 
--- Flashlight
-local flashlight = Instance.new("SpotLight")
-flashlight.Name = "DroneLight"
-flashlight.Parent = drone
-flashlight.Angle = 60
-flashlight.Brightness = 2
-flashlight.Range = 60
-flashlight.Color = Color3.new(1, 1, 1)
-flashlight.Face = Enum.NormalId.Front
+-- Flashlight local flashlight = Instance.new("SpotLight") flashlight.Name = "DroneLight" flashlight.Parent = drone flashlight.Angle = 60 flashlight.Brightness = 2 flashlight.Range = 60 flashlight.Color = Color3.new(1, 1, 1) flashlight.Face = Enum.NormalId.Front
 
--- GUI
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "DroneESPGui"
-gui.ResetOnSpawn = false
+-- GUI local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui")) gui.Name = "DroneESPGui" gui.ResetOnSpawn = false
 
-local scanBtn = Instance.new("TextButton")
-scanBtn.Size = UDim2.new(0, 100, 0, 40)
-scanBtn.Position = UDim2.new(0, 30, 0, 200)
-scanBtn.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-scanBtn.TextColor3 = Color3.new(1, 1, 1)
-scanBtn.Text = "Scan"
-scanBtn.Font = Enum.Font.GothamBold
-scanBtn.Parent = gui
-scanBtn.Draggable = true
-scanBtn.ZIndex = 2
+local scanBtn = Instance.new("TextButton") scanBtn.Size = UDim2.new(0, 100, 0, 40) scanBtn.Position = UDim2.new(0, 30, 0, 200) scanBtn.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1) scanBtn.TextColor3 = Color3.new(1, 1, 1) scanBtn.Text = "Scan" scanBtn.Font = Enum.Font.GothamBold scanBtn.Parent = gui scanBtn.Draggable = true scanBtn.ZIndex = 2
 
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 100, 0, 40)
-toggleBtn.Position = UDim2.new(0, 30, 0, 250)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-toggleBtn.TextColor3 = Color3.new(1, 1, 1)
-toggleBtn.Text = "Mode: Players"
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.Parent = gui
-toggleBtn.Draggable = true
-toggleBtn.ZIndex = 2
+local toggleBtn = Instance.new("TextButton") toggleBtn.Size = UDim2.new(0, 100, 0, 40) toggleBtn.Position = UDim2.new(0, 30, 0, 250) toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30) toggleBtn.TextColor3 = Color3.new(1, 1, 1) toggleBtn.Text = "Mode: Players" toggleBtn.Font = Enum.Font.GothamBold toggleBtn.Parent = gui toggleBtn.Draggable = true toggleBtn.ZIndex = 2
 
 local scanMode = "Players"
 
--- Toggle scanning mode
-toggleBtn.MouseButton1Click:Connect(function()
-	if scanMode == "Players" then
-		scanMode = "NPCs"
-	elseif scanMode == "NPCs" then
-		scanMode = "Items"
-	else
-		scanMode = "Players"
+-- Toggle scanning mode toggleBtn.MouseButton1Click:Connect(function() if scanMode == "Players" then scanMode = "NPCs" elseif scanMode == "NPCs" then scanMode = "Items" else scanMode = "Players" end toggleBtn.Text = "Mode: " .. scanMode end)
+
+-- Utility: fading exclamation mark local function createExclamationAbove(char) local head = char:FindFirstChild("Head") if not head then return end
+
+local gui = Instance.new("BillboardGui", char)
+gui.Adornee = head
+gui.Size = UDim2.new(0, 40, 0, 40)
+gui.StudsOffset = Vector3.new(0, 2.5, 0)
+gui.AlwaysOnTop = true
+
+local label = Instance.new("TextLabel", gui)
+label.Size = UDim2.new(1, 0, 1, 0)
+label.Text = "!"
+label.TextScaled = true
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.new(1, 0.8, 0)
+label.Font = Enum.Font.Arcade
+label.TextStrokeTransparency = 0.4
+
+local tween = TweenService:Create(label, TweenInfo.new(1.5), {
+	TextTransparency = 1,
+	TextStrokeTransparency = 1
+})
+tween:Play()
+tween.Completed:Connect(function() gui:Destroy() end)
+
+end
+
+-- Pulse ring effect (2D red circle that expands) local function createPulseRing(model) local hrp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("PrimaryPart") if not hrp then return end
+
+local attachment = Instance.new("Attachment")
+attachment.Parent = hrp
+
+local ring = Instance.new("ParticleEmitter")
+ring.Texture = "rbxassetid://92229924136385"
+ring.LightInfluence = 0
+ring.ZOffset = 1
+ring.Size = NumberSequence.new{
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(1, 10)
+}
+ring.Transparency = NumberSequence.new{
+	NumberSequenceKeypoint.new(0, 0.2),
+	NumberSequenceKeypoint.new(1, 1)
+}
+ring.Lifetime = NumberRange.new(1.25)
+ring.Rate = 1
+ring.Speed = NumberRange.new(0)
+ring.Rotation = NumberRange.new(0)
+ring.RotSpeed = NumberRange.new(0)
+ring.Color = ColorSequence.new(Color3.new(1, 0, 0))
+ring.Enabled = true
+ring.Parent = attachment
+
+task.delay(1.25, function()
+	if attachment then
+		attachment:Destroy()
 	end
-	toggleBtn.Text = "Mode: " .. scanMode
 end)
 
--- Utility: fading exclamation mark
-local function createExclamationAbove(char)
-	local head = char:FindFirstChild("Head")
-	if not head then return end
-
-	local gui = Instance.new("BillboardGui", char)
-	gui.Adornee = head
-	gui.Size = UDim2.new(0, 40, 0, 40)
-	gui.StudsOffset = Vector3.new(0, 2.5, 0)
-	gui.AlwaysOnTop = true
-
-	local label = Instance.new("TextLabel", gui)
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.Text = "!"
-	label.TextScaled = true
-	label.BackgroundTransparency = 1
-	label.TextColor3 = Color3.new(1, 0.8, 0)
-	label.Font = Enum.Font.Arcade
-	label.TextStrokeTransparency = 0.4
-
-	local tween = TweenService:Create(label, TweenInfo.new(1.5), {
-		TextTransparency = 1,
-		TextStrokeTransparency = 1
-	})
-	tween:Play()
-	tween.Completed:Connect(function() gui:Destroy() end)
 end
 
--- Utility: pulse ring on ground
-local function createPulseRing(model)
-	local hrp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("PrimaryPart")
-	if not hrp then return end
+-- Scan function local function scan() for _, model in pairs(workspace:GetDescendants()) do if model:IsA("Model") and model ~= character then local hrp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("PrimaryPart") if hrp and (hrp.Position - drone.Position).Magnitude <= 1500 then local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil local isHumanoid = model:FindFirstChild("Humanoid") ~= nil
 
-	local ring = Instance.new("Part")
-	ring.Anchored = true
-	ring.CanCollide = false
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Size = Vector3.new(0.2, 0.2, 0.2)
-	ring.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(math.rad(90), 0, 0)
-	ring.Material = Enum.Material.Neon
-	ring.Color = Color3.new(1, 0, 0)
-	ring.Transparency = 0.3
-	ring.Parent = workspace
-
-	local tween = TweenService:Create(ring, TweenInfo.new(1.2), {
-		Size = Vector3.new(0.2, 50, 50),
-		Transparency = 1
-	})
-	tween:Play()
-	tween.Completed:Connect(function() ring:Destroy() end)
-end
-
--- Scan function
-local function scan()
-	for _, model in pairs(workspace:GetDescendants()) do
-		if model:IsA("Model") and model ~= character then
-			local hrp = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("PrimaryPart")
-			if hrp and (hrp.Position - drone.Position).Magnitude <= 1500 then
-				local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
-				local isHumanoid = model:FindFirstChild("Humanoid") ~= nil
-
-				if (scanMode == "Players" and isPlayer)
-					or (scanMode == "NPCs" and isHumanoid and not isPlayer)
-					or (scanMode == "Items" and not isHumanoid) then
-					createExclamationAbove(model)
-					createPulseRing(model)
-				end
+if (scanMode == "Players" and isPlayer)
+				or (scanMode == "NPCs" and isHumanoid and not isPlayer)
+				or (scanMode == "Items" and not isHumanoid) then
+				createExclamationAbove(model)
+				createPulseRing(model)
 			end
 		end
 	end
 end
 
--- Button click
-scanBtn.MouseButton1Click:Connect(scan)
+end
 
--- Float & face direction
-local floatT = 0
-RunService.RenderStepped:Connect(function(dt)
-	if not hrp then return end
-	floatT += dt * 2
-	local yOffset = math.sin(floatT) * 0.5
-	local pos = hrp.Position + Vector3.new(0, 5 + yOffset, 0) - hrp.CFrame.LookVector * 4
-	drone.CFrame = CFrame.new(pos, pos + hrp.CFrame.LookVector)
-end)
+-- Button click scanBtn.MouseButton1Click:Connect(scan)
 
--- Character respawn
-player.CharacterAdded:Connect(function(char)
-	character = char
-	hrp = char:WaitForChild("HumanoidRootPart")
-end)
+-- Float & face direction local floatT = 0 RunService.RenderStepped:Connect(function(dt) if not hrp then return end floatT += dt * 2 local yOffset = math.sin(floatT) * 0.5 local pos = hrp.Position + Vector3.new(0, 5 + yOffset, 0) - hrp.CFrame.LookVector * 4 drone.CFrame = CFrame.new(pos, pos + hrp.CFrame.LookVector) end)
+
+-- Character respawn player.CharacterAdded:Connect(function(char) character = char hr p = char:WaitForChild("HumanoidRootPart") end)
+
