@@ -174,14 +174,134 @@ end
 local function scanPulse()
 	if not spinning then
 		spinning = true
-		spawn(function()
-			for i = 1, 3 do
+		task.spawn(function()
+			for _ = 1, 3 do
 				local spin = TweenService:Create(drone, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
 					CFrame = drone.CFrame * CFrame.Angles(0, math.rad(120), 0)
 				})
 				spin:Play()
 				spin.Completed:Wait()
 			end
+			spinning = false
+		end)
+	end
+
+	local scanned = {}
+	for _, model in pairs(workspace:GetDescendants()) do
+		if model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") and model ~= character then
+			local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
+			local isItem = model:FindFirstChild("IsItem")
+			if (scanMode == "Players" and isPlayer) or (scanMode == "NPCs" and not isPlayer) or (scanMode == "Items" and isItem) then
+				local distance = (drone.Position - model.HumanoidRootPart.Position).Magnitude
+				if distance <= 1500 then
+					scanned[model] = true
+					createPulseCircle(model)
+					createExclamationAbove(model)
+				end
+			end
+		end
+	end
+end
+			spinning = false
+		end)
+	end
+
+	-- Create a red expanding sphere
+	local pulseSphere = Instance.new("Part")
+	pulseSphere.Shape = Enum.PartType.Ball
+	pulseSphere.Anchored = true
+	pulseSphere.CanCollide = false
+	pulseSphere.Transparency = 0.7
+	pulseSphere.Color = Color3.fromRGB(255, 0, 0)
+	pulseSphere.Material = Enum.Material.ForceField
+	pulseSphere.Size = Vector3.new(1, 1, 1)
+	pulseSphere.CFrame = CFrame.new(drone.Position)
+	pulseSphere.Parent = workspace
+
+	local scanned = {}
+	local radius = 0
+
+	local tween = TweenService:Create(pulseSphere, TweenInfo.new(1.25), {
+		Size = Vector3.new(3000, 3000, 3000),
+		Transparency = 1
+	})
+	tween:Play()
+
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		radius += 120 -- approx growth per frame
+		for _, model in pairs(workspace:GetDescendants()) do
+			if not scanned[model] and model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") and model ~= character then
+				local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
+				local isItem = model:FindFirstChild("IsItem")
+				if (scanMode == "Players" and isPlayer) or (scanMode == "NPCs" and not isPlayer) or (scanMode == "Items" and isItem) then
+					local distance = (drone.Position - model.HumanoidRootPart.Position).Magnitude
+					if distance <= radius then
+						scanned[model] = true
+						createPulseCircle(model)
+						createExclamationAbove(model)
+					end
+				end
+			end
+		if radius >= 1500 then
+			connection:Disconnect()
+			pulseSphere:Destroy()
+		end
+	end)
+end
+			spinning = false
+		end)
+	end
+
+	local pulseRing = Instance.new("BillboardGui")
+	pulseRing.Size = UDim2.new(0, 0, 0, 0)
+	pulseRing.StudsOffset = Vector3.new(0, 0.1, 0)
+	pulseRing.Adornee = drone
+	pulseRing.AlwaysOnTop = true
+	pulseRing.LightInfluence = 0
+	pulseRing.Parent = drone
+
+	local ringImage = Instance.new("ImageLabel")
+	ringImage.AnchorPoint = Vector2.new(0.5, 0.5)
+	ringImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+	ringImage.Size = UDim2.new(0, 0, 0, 0)
+	ringImage.BackgroundTransparency = 1
+	ringImage.Image = "rbxassetid://92229924136385"
+	ringImage.ImageTransparency = 0.25
+	ringImage.ZIndex = 1
+	ringImage.Parent = pulseRing
+
+	local scanned = {}
+	local radius = 0
+
+	local tween = TweenService:Create(ringImage, TweenInfo.new(1.25), {
+		Size = UDim2.new(0, 3000, 0, 3000), -- 1500 studs radius x2
+		ImageTransparency = 1
+	})
+	tween:Play()
+
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		radius += 120 -- expand per frame approximation
+		for _, model in pairs(workspace:GetDescendants()) do
+			if not scanned[model] and model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") and model ~= character then
+				local isPlayer = Players:GetPlayerFromCharacter(model) ~= nil
+				local isItem = model:FindFirstChild("IsItem")
+				if (scanMode == "Players" and isPlayer) or (scanMode == "NPCs" and not isPlayer) or (scanMode == "Items" and isItem) then
+					local distance = (drone.Position - model.HumanoidRootPart.Position).Magnitude
+					if distance <= radius then
+						scanned[model] = true
+						createPulseCircle(model)
+						createExclamationAbove(model)
+					end
+				end
+			end
+		if radius >= 1500 then
+			connection:Disconnect()
+			pulseRing:Destroy()
+		end
+	end)
+end
 			spinning = false
 		end)
 	end
