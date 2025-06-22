@@ -1,0 +1,11 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local Config = require(ReplicatedStorage.DroneModules:WaitForChild("DroneConfig"))
+local Effects = require(ReplicatedStorage.DroneModules:WaitForChild("DroneEffects"))
+local Scanner = require(ReplicatedStorage.DroneModules:WaitForChild("DroneScanner"))
+
+local drone = Config(player, character)
+Scanner(player, character, drone, Effects)
